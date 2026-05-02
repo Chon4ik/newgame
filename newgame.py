@@ -36,19 +36,49 @@ class Player(GameSprite):
                 elif self.vel_y < 0:
                     self.rect.top = p.rect.bottom
                     self.vel_y = 0
+class Coin(sprite.Sprite):
+    def __init__(self,x,y):
+        super().__init__()
+        self.image = Surface((20,20),SRCALPHA)
+        draw.circle(self.image, (255,215,0), (10,10),10)
+        self.rect = self.image.get_rect()
+        self.rect.center = (x,y)
+class Enemy(GameSprite):
+    def __init__(self,color,x,y,w,h,spd,left,right):
+        super().__init__(color,x,y,w,h,spd)
+        self.left_bound = left
+        self.right_bound = right
+    def update(self):
+        self.rect.x += self.speed
+        if self.rect.right >= self.right_bound or self.rect.left <= self.left_bound:
+            self.speed *= -1
 font.init()
 font1 = font.Font(None,36)
 mixer.init()
 window = display.set_mode((700,500))
 win_width = 700
 win_height = 500
-speed1 = 10
+speed1 = 5
 x1 = 50
 y1= 405
 speed_y = 6
 speed2 = 6
 display.set_caption('Платформер')
 player1=Player((50,50,255),x1,y1,45,45,speed1)
+enemy1 = Enemy((50,50,255),340,305,45,45,3,250,450)
+enemy2 = Enemy((50,50,255),460,205,45,45,3,450,650)
+enemy3 = Enemy((50,50,255),200,155,45,45,3,100,300)
+enemys = sprite.Group()
+enemy1.add(enemys)
+enemy2.add(enemys)
+enemy3.add(enemys)
+coin1 = Coin(350,335)
+coin2 = Coin(550,235)
+coin3 = Coin(200,185)
+coins = sprite.Group()
+coin1.add(coins)
+coin2.add(coins)
+coin3.add(coins)
 platform = GameSprite((60,179,60),0,450,700,20,0)
 platform1 = GameSprite((60,179,60),250,350,200,20,0)
 platform2 = GameSprite((60,179,60),450,250,200,20,0)
@@ -73,5 +103,8 @@ while game:
         platforms.draw(window)
         player1.reset()
         player1.update()
+        coins.draw(window)
+        enemys.draw(window)
+        enemys.update()
     display.update()
     clock.tick(FPS)
