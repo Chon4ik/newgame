@@ -52,6 +52,22 @@ class Enemy(GameSprite):
         self.rect.x += self.speed
         if self.rect.right >= self.right_bound or self.rect.left <= self.left_bound:
             self.speed *= -1
+def load_level(index):
+    global platforms,enemys,flag
+    data = leevel_data[index]
+    platforms = sprite.Group()
+    for x,y,w in data['platforms']:
+        platforms.add(Platform(x,y,w))
+    coins = sprite.Group()
+    for x,y in data['coins']:
+        coins.add(Coin(x,y))
+    enemys = sprite.Group()
+    for x,y,l,r in data['enemys']:
+        enemys.add(Enemy((110,43,83),x,y,45,45,3,l,r))
+    '''flag = sprite.GroupSingle(Flag(*data['flag']))'''
+    player1.rect.x = data['start'][0]
+    player1.rect.y = data['start'][1]
+    player1.vel_y = 0
 font.init()
 font1 = font.Font(None,36)
 mixer.init()
@@ -65,9 +81,9 @@ speed_y = 6
 speed2 = 6
 display.set_caption('Платформер')
 player1=Player((50,50,255),x1,y1,45,45,speed1)
-enemy1 = Enemy((50,50,255),340,305,45,45,3,250,450)
-enemy2 = Enemy((50,50,255),460,205,45,45,3,450,650)
-enemy3 = Enemy((50,50,255),200,155,45,45,3,100,300)
+enemy1 = Enemy((110,43,83),340,305,45,45,3,250,450)
+enemy2 = Enemy((110,43,83),460,205,45,45,3,450,650)
+enemy3 = Enemy((110,43,83),200,155,45,45,3,100,300)
 enemys = sprite.Group()
 enemy1.add(enemys)
 enemy2.add(enemys)
@@ -90,8 +106,12 @@ platforms.add(platform2)
 platforms.add(platform3)
 background = transform.scale(image.load('galaxy.jpg'),(700,500))
 clock = time.Clock()
+lose = font1.render('you lose',True,(255,0,0))
+text_win = font1.render('you win',True,(255,255,55))
+total = 0
 FPS = 60
 total = 0
+life = 3
 finish = False
 game = True
 while game:
@@ -99,6 +119,8 @@ while game:
             if e.type == QUIT:
                 game = False
     if finish!=True:
+        sprites_list1 = sprite.spritecollide(player1,enemys,False)
+        sprites_list2 = sprite.spritecollide(player1,coins,True)
         window.blit(background,(0,0))
         platforms.draw(window)
         player1.reset()
@@ -106,5 +128,13 @@ while game:
         coins.draw(window)
         enemys.draw(window)
         enemys.update()
+        if sprites_list2:
+            total +=1
+        if total==3:
+            window.blit(text_win,(300,250))
+            finish = True
+        if sprites_list1:
+            window.blit(lose,(300,250))
+            finish = True
     display.update()
     clock.tick(FPS)
