@@ -1,5 +1,7 @@
 from random import *
 from pygame import *
+import sys
+from openpyxl import load_workbook
 class GameSprite(sprite.Sprite):
     def __init__(self,color,x,y,w,h,spd):
         super().__init__()
@@ -52,22 +54,92 @@ class Enemy(GameSprite):
         self.rect.x += self.speed
         if self.rect.right >= self.right_bound or self.rect.left <= self.left_bound:
             self.speed *= -1
+class Flag(GameSprite):
+    def __init__(self,x,y):
+        super().__init__((255,140,0),x,y,40,80,0)
 def load_level(index):
     global platforms,enemys,flag
-    data = leevel_data[index]
+    data = level_data[index]
     platforms = sprite.Group()
     for x,y,w in data['platforms']:
-        platforms.add(Platform(x,y,w))
+        platforms.add(GameSprite((60,179,60),x,y,w,20,0))
     coins = sprite.Group()
     for x,y in data['coins']:
         coins.add(Coin(x,y))
     enemys = sprite.Group()
     for x,y,l,r in data['enemys']:
         enemys.add(Enemy((110,43,83),x,y,45,45,3,l,r))
-    '''flag = sprite.GroupSingle(Flag(*data['flag']))'''
+    flag = sprite.GroupSingle(Flag(*data['flag']))
     player1.rect.x = data['start'][0]
     player1.rect.y = data['start'][1]
     player1.vel_y = 0
+level_data = [
+    {
+        'bg': (135, 206, 235),
+        'start': (60, 400),
+        'platforms': [(0, 460, 800), (150, 360, 150), (350, 280, 150), (550, 200, 150), (100, 180, 120)],
+        'coins':     [(230, 330), (425, 250), (625, 170), (160, 150), (400, 430)],
+        'enemys':   [(150, 324, 150, 300), (360, 244, 350, 500)],
+        'flag':      (730, 400),
+    },
+    {
+        'bg': (135, 206, 235),
+        'start': (30, 400),
+        'platforms': [(0, 460, 800), (50, 380, 100), (200, 300, 100), (350, 220, 100), (500, 300, 100), (650, 380, 150)],
+        'coins':     [(100, 355), (250, 275), (400, 195), (550, 275), (700, 355)],
+        'enemys':   [(55, 344, 50, 150), (355, 184, 350, 450), (505, 264, 500, 600)],
+        'flag':      (750, 400),
+    },
+]
+
+CELL = 40
+COLOR_MAP = {
+    "60B33C": "platform",
+    "FFD700": "coin",
+    "FF0000": "enemy",
+    "FFC000": "flag",
+}
+def load_level_from_xlsx(path):
+    global level_data, current_level
+    wb = load_workbook(path, data_only=True)
+    ws = wb.active
+
+    platforms = [] 
+    coins = []
+    enemys = []
+    flag_pos = (0, 0)
+
+    for row in ws.iter_rows():
+        for cell in row:
+            fill = cell.fill
+            if not (fill and fill.fill_type == "solid"):
+                continue
+            color = fill.fgColor.rgb[-6:].upper()
+            kind = COLOR_MAP.get(color)
+
+            x = (cell.column - 1) * CELL
+            y = (cell.row - 1) * CELL
+
+            if kind == "platform":
+                platforms.append((x, y, CELL))  
+            elif kind == "coin":
+                coins.append((x, y))
+            elif kind == "enemy":
+                enemys.append((x, y, max(0, x - 3*CELL), x + 3*CELL))
+            elif kind == "flag":
+                flag_pos = (x, y)
+
+    # Добавляем новый уровень в список
+    level_data.append({
+        'bg': (135, 206, 235),
+        'start': (CELL, win_height - 3*CELL),
+        'platforms': platforms,
+        'coins': coins,
+        'enemys': enemys,
+        'flag': flag_pos
+    })
+    current_level = len(level_data) - 1
+    load_level(current_level)
 font.init()
 font1 = font.Font(None,36)
 mixer.init()
@@ -80,6 +152,7 @@ y1= 405
 speed_y = 6
 speed2 = 6
 display.set_caption('Платформер')
+flag = Flag(650,370)
 player1=Player((50,50,255),x1,y1,45,45,speed1)
 enemy1 = Enemy((110,43,83),340,305,45,45,3,250,450)
 enemy2 = Enemy((110,43,83),460,205,45,45,3,450,650)
@@ -114,6 +187,14 @@ total = 0
 life = 3
 finish = False
 game = True
+flagg=sprite.GroupSingle()
+flagg.add(flag)
+if len(sys.argv) > 1:
+    load_level_from_xlsx(sys.argv[1])   
+else:
+    current_level = 0
+    load_level(current_level)
+clock = time.Clock()
 while game:
     for e in event.get():
             if e.type == QUIT:
@@ -128,9 +209,10 @@ while game:
         coins.draw(window)
         enemys.draw(window)
         enemys.update()
+        flag.draw(window)
         if sprites_list2:
             total +=1
-        if total==3:
+        if total==3 and sprite.spritecollide(player1,flagg,False):
             window.blit(text_win,(300,250))
             finish = True
         if sprites_list1:
